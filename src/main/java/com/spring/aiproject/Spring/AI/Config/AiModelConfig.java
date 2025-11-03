@@ -2,8 +2,6 @@
 
     import org.springframework.ai.chat.client.ChatClient;
     import org.springframework.ai.chat.memory.ChatMemory;
-    import org.springframework.ai.chat.memory.ChatMemoryRepository;
-    import org.springframework.ai.chat.memory.InMemoryChatMemoryRepository;
     import org.springframework.ai.chat.memory.MessageWindowChatMemory;
     import org.springframework.ai.chat.memory.repository.jdbc.JdbcChatMemoryRepository;
     import org.springframework.ai.ollama.OllamaChatModel;
@@ -11,11 +9,13 @@
     import org.springframework.beans.factory.annotation.Autowired;
     import org.springframework.context.annotation.Bean;
     import org.springframework.context.annotation.Configuration;
+    import org.springframework.ai.openai.OpenAiChatModel;
+
 
     @Configuration
     public class AiModelConfig {
 
-        @Bean(name = "ollamaAiChatClient")
+        @Bean(name = "OllamaAiChatClient")
         public ChatClient ollamaChatClient(OllamaChatModel ollamaChatModel){
             return ChatClient.builder(ollamaChatModel).build();
         }
@@ -23,6 +23,11 @@
         @Bean(name = "GeminiChatClient")
         public ChatClient geminiChatClient(VertexAiGeminiChatModel geminiChatModel) {
             return ChatClient.builder(geminiChatModel).build();
+        }
+
+        @Bean(name = "openAiChatClient")
+        public ChatClient openaiChatClient(OpenAiChatModel openAiChatModel ){
+            return ChatClient.builder(openAiChatModel).build();
         }
 
 //        @Bean

@@ -1,23 +1,18 @@
 package com.spring.aiproject.Spring.AI.Entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
-
-import javax.xml.crypto.dsig.spec.XSLTTransformParameterSpec;
 
 @Getter
 @Setter
+@JsonIgnoreProperties(ignoreUnknown = true)
+@AllArgsConstructor
+@NoArgsConstructor
 public class Content {
     private String title;
     private String content;
     private String code;
-
-    public Content( String title,String content, String code) {
-        this.content = content;
-        this.title = title;
-        this.code = code;
-    }
-
-    public Content() {
-    }
 }

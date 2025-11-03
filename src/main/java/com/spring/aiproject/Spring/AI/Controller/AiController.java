@@ -1,35 +1,22 @@
 package com.spring.aiproject.Spring.AI.Controller;
 
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.spring.aiproject.Spring.AI.Entity.Content;
 import com.spring.aiproject.Spring.AI.Service.ChatService;
-import com.spring.aiproject.Spring.AI.advisors.SensitiveDataAdvisor;
+import com.spring.aiproject.Spring.AI.tools.DateTimeTool;
 import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
-import org.springframework.ai.chat.client.advisor.SafeGuardAdvisor;
-import org.springframework.ai.chat.client.advisor.SimpleLoggerAdvisor;
 import org.springframework.ai.chat.memory.ChatMemory;
-import org.springframework.ai.chat.messages.AssistantMessage;
-import org.springframework.ai.chat.messages.Message;
-import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.image.ImageGeneration;
 import org.springframework.ai.image.ImagePrompt;
 import org.springframework.ai.image.ImageResponse;
-import org.springframework.ai.ollama.api.OllamaApi;
 import org.springframework.ai.stabilityai.StabilityAiImageModel;
 import org.springframework.ai.stabilityai.api.StabilityAiImageOptions;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.boot.autoconfigure.task.TaskExecutionProperties;
-import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.HandlerMapping;
 import reactor.core.publisher.Flux;
-
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+
 
 @CrossOrigin(origins = "*")
 @RestController
@@ -38,18 +25,27 @@ public class AiController {
 
     private final ChatClient ollamaChatClient;
     private final ChatClient vertexChatClient;
+    private final ChatClient openAiChatClient;
     private final StabilityAiImageModel stabilityAiImageModel;
 
     // In-memory store for conversation history. In a real-world app, this would be per-user session.
 //    private final Map<String, List<Message>> chatHistories = new ConcurrentHashMap<>();
 //    private final HandlerMapping resourceHandlerMapping;
-    private ChatService chatService;
+    private final ChatService chatService;
     private final ChatMemory chatMemory;
 
-    public AiController(@Qualifier("GeminiChatClient") ChatClient vertexChatClient, @Qualifier("ollamaAiChatClient") ChatClient ollamaChatClient, StabilityAiImageModel stabilityAiImageModel, HandlerMapping resourceHandlerMapping, ChatService chatService, ChatMemory chatMemory) {
+    private DateTimeTool dateTimeTool;
+
+    public AiController(@Qualifier("GeminiChatClient") ChatClient vertexChatClient,
+                        @Qualifier("OllamaAiChatClient") ChatClient ollamaChatClient,
+                        @Qualifier("openAiChatClient") ChatClient openAiChatClient,
+                        StabilityAiImageModel stabilityAiImageModel, HandlerMapping resourceHandlerMapping,
+                        ChatService chatService, ChatMemory chatMemory) {
+
         this.ollamaChatClient = ollamaChatClient;
         this.vertexChatClient = vertexChatClient;
         this.stabilityAiImageModel = stabilityAiImageModel;
+        this.openAiChatClient = openAiChatClient;
         this.chatService = chatService;
         this.chatMemory = chatMemory;
     }
@@ -63,25 +59,7 @@ public class AiController {
 
 
         try {
-
-            MessageChatMemoryAdvisor messageChatMemoryAdvisor = MessageChatMemoryAdvisor.builder(chatMemory)
-                    .conversationId(request.username)
-                    .build();
-
-            List<Content> vertexMessages = vertexChatClient
-                    .prompt()
-//                    .system("""
-//                                You are a concise and accurate coding assistant.
-//                                Provide clean, ready-to-use code with minimal explanation unless asked.
-//                                Focus on correctness, efficiency, and best practices.
-//                                """)
-                    .user(request.message)
-                    .advisors(new SimpleLoggerAdvisor(), new SensitiveDataAdvisor(), messageChatMemoryAdvisor)
-                    .call()
-                    .entity(new ParameterizedTypeReference<List<Content>>() {
-                    });
-
-
+            List<Content> vertexMessages = chatService.chat(request.message(), request.username);
             return ResponseEntity.ok(vertexMessages);
 
         } catch (Exception e) {
@@ -141,8 +119,8 @@ public class AiController {
         }
     }
 
-    @GetMapping("/stream-chat")
-    public ResponseEntity<Flux<String>> streamChat(@RequestParam ("q") String query){
-        return ResponseEntity.ok(this.chatService.streamChat(query));
+    @PostMapping("/stream-chat")
+    public ResponseEntity<Flux<String>> streamChat(@RequestBody ChatRequest request){
+        return ResponseEntity.ok(this.chatService.streamChat(request.message()));
     }
 }
