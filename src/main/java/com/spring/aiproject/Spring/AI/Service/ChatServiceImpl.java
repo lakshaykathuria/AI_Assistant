@@ -3,6 +3,7 @@ package com.spring.aiproject.Spring.AI.Service;
 import com.spring.aiproject.Spring.AI.Entity.Content;
 import com.spring.aiproject.Spring.AI.advisors.SensitiveDataAdvisor;
 import com.spring.aiproject.Spring.AI.tools.DateTimeTool;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
 import org.springframework.ai.chat.client.advisor.SimpleLoggerAdvisor;
@@ -16,6 +17,7 @@ import reactor.core.publisher.Flux;
 
 import java.util.List;
 
+@Slf4j
 @Service
 public class ChatServiceImpl implements ChatService{
 
@@ -37,6 +39,7 @@ public class ChatServiceImpl implements ChatService{
 
     @Override
     public List<Content> chat(String query, String username) {
+        log.info("[CHAT-SVC] Processing query for username='{}', query='{}'" , username, query);
         VertexAiGeminiChatOptions groundingOptions = VertexAiGeminiChatOptions.builder()
                 .googleSearchRetrieval(true)
                 .build();
@@ -117,10 +120,12 @@ You assist the developer in thinking, not just coding.
                 .advisors(new SimpleLoggerAdvisor(), new SensitiveDataAdvisor(), messageChatMemoryAdvisor)
                 .call()
                 .entity(new ParameterizedTypeReference<List<Content>>() {});
+        // result logging happens at the controller layer
     }
 
     @Override
     public Flux<String> streamChat(String query) {
+        log.info("[CHAT-SVC] Stream chat requested, query='{}'", query);
         return this.chatClient
                 .prompt()
                 .system("You are a helpful assistant.")

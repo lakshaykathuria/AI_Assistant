@@ -3,6 +3,7 @@ package com.spring.aiproject.Spring.AI.Controller;
 import com.spring.aiproject.Spring.AI.Entity.Content;
 import com.spring.aiproject.Spring.AI.Service.ChatService;
 import com.spring.aiproject.Spring.AI.tools.DateTimeTool;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.image.ImageGeneration;
@@ -18,6 +19,7 @@ import reactor.core.publisher.Flux;
 import java.util.List;
 
 
+@Slf4j
 @CrossOrigin(origins = "*")
 @RestController
 @RequestMapping("/api")
@@ -56,15 +58,15 @@ public class AiController {
 
     @PostMapping("/chat")
     public ResponseEntity<List<Content>> chat(@RequestBody ChatRequest request) {
-
+        log.info("[CHAT] user='{}' message='{}'" , request.username(), request.message());
 
         try {
             List<Content> vertexMessages = chatService.chat(request.message(), request.username);
+            log.debug("[CHAT] response items={}", vertexMessages.size());
             return ResponseEntity.ok(vertexMessages);
 
         } catch (Exception e) {
-            e.printStackTrace();
-
+            log.error("[CHAT] Error for user='{}': {}", request.username(), e.getMessage(), e);
             List<Content> fallback = List.of(
                     new Content("Error", "I'm unable to respond to that right now. Please try again.", "")
             );
@@ -98,24 +100,32 @@ public class AiController {
 
     @GetMapping("/image")
     public ResponseEntity<String> textToImage(@RequestParam("prompt") String prompt) {
+        log.info("[IMAGE] Generating image for prompt='{}'" , prompt);
 
-        ImageResponse response = stabilityAiImageModel.call(
-                new ImagePrompt(prompt,
-                        StabilityAiImageOptions.builder()
-                                .model("stable-diffusion-xl-1024-v1-0")
-                                .stylePreset("comic-book")
-                                .height(1024)
-                                .width(1024)
-                                .build())
-        );
-        ImageGeneration imageGen = response.getResult();
+        try {
+            ImageResponse response = stabilityAiImageModel.call(
+                    new ImagePrompt(prompt,
+                            StabilityAiImageOptions.builder()
+                                    .model("stable-diffusion-xl-base-1.0")
+                                    .stylePreset("enhance")
+                                    .height(1024)
+                                    .width(1024)
+                                    .build())
+            );
+            ImageGeneration imageGen = response.getResult();
 
-        if (imageGen.getOutput().getUrl() != null) {
-            return ResponseEntity.ok(imageGen.getOutput().getUrl().toString());
-        } else {
-            String base64 = imageGen.getOutput().getB64Json();
-            String imageUrl = "data:image/png;base64," + base64;
-            return ResponseEntity.ok(imageUrl);
+            if (imageGen.getOutput().getUrl() != null) {
+                log.info("[IMAGE] Generated image URL: {}", imageGen.getOutput().getUrl());
+                return ResponseEntity.ok(imageGen.getOutput().getUrl().toString());
+            } else {
+                log.info("[IMAGE] Generated image as base64 (b64_json)");
+                String base64 = imageGen.getOutput().getB64Json();
+                String imageUrl = "data:image/png;base64," + base64;
+                return ResponseEntity.ok(imageUrl);
+            }
+        } catch (Exception e) {
+            log.error("[IMAGE] Failed to generate image for prompt='{}': {}", prompt, e.getMessage(), e);
+            return ResponseEntity.internalServerError().body("Image generation failed: " + e.getMessage());
         }
     }
 
